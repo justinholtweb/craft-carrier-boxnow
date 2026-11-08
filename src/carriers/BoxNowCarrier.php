@@ -100,6 +100,16 @@ use justinholtweb\carrierboxnow\auth\BoxNowAuth;
  */
 class BoxNowCarrier extends Carrier
 {
+    /**
+     * The point feed is public, so these credentials are needed for everything except points.
+     * A shop can run the picker before its contract is signed (core #4). Listed rather than
+     * `Feature::allExcept()` so the add-on still loads on core 5.0.
+     */
+    private const NOT_POINTS = [
+        Feature::RATES, Feature::LABELS, Feature::CANCEL, Feature::REPRINT, Feature::TRACKING,
+        Feature::PICKUPS, Feature::CLOSE_DAY, Feature::ADDRESS_VALIDATION, Feature::WEBHOOKS,
+    ];
+
     /** 20 kg, every compartment. */
     private const MAX_WEIGHT_G = 20000;
 
@@ -196,10 +206,11 @@ class BoxNowCarrier extends Carrier
             ], [
                 'instructions' => 'BOX NOW issues credentials per country and delivers only within it. Slovenia uses the Croatian host unless BOX NOW gave you another URL.',
             ]),
-            Field::text('clientId', 'Client ID', ['required' => true]),
-            Field::secret('clientSecret', 'Client secret', ['required' => true]),
+            Field::text('clientId', 'Client ID', ['required' => true, 'requiredFor' => self::NOT_POINTS]),
+            Field::secret('clientSecret', 'Client secret', ['required' => true, 'requiredFor' => self::NOT_POINTS]),
             Field::text('originLocationId', 'Origin (warehouse) ID', [
                 'required' => true,
+                'requiredFor' => self::NOT_POINTS,
                 'instructions' => 'The id BOX NOW registered for your warehouse — the connection test lists them. Use “any-apm” if you drop parcels into any locker yourself.',
             ]),
             Field::text('partnerId', 'Partner ID', [
@@ -782,7 +793,8 @@ class BoxNowCarrier extends Carrier
             return PointPage::of([]);
         }
 
-        $response = $this->transport()->get($this->feedUrl($country), [], ['headers' => ['Accept' => 'application/json']]);
+        // A public feed on another host: it must never receive the OAuth bearer token.
+        $response = $this->transport()->get($this->feedUrl($country), [], ['headers' => ['Accept' => 'application/json'], 'auth' => false]);
 
         if (!$response->ok()) {
             return PointPage::failed(Craft::t('carrier', 'BOX NOW’s locker list could not be fetched: {message}', ['message' => $this->boxNowError($response)]));

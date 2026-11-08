@@ -1,5 +1,9 @@
 # Release Notes for Carrier for BOX NOW
 
+## 5.1.0 - 2026-11-08
+
+- A points-only connection: the client ID, client secret and origin ID are needed only for labels and tracking, so the locker picker can run without them (requires Carrier 5.1). The public locker feed no longer receives the OAuth token. ([craft-carrier#4](https://github.com/justinholtweb/craft-carrier/issues/4))
+
 ## 5.0.0 — 2026-10-03
 
 Initial release.
